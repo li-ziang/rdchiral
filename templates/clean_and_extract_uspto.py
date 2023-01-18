@@ -22,7 +22,13 @@ def can_parse(rsmi):
     
 t0 = time()
 
-uspto = pd.read_csv('data/1976_Sep2016_USPTOgrants_smiles.rsmi', sep='\t')
+# [Br:1][CH2:2][CH2:3][OH:4].[CH2:5]([S:7](Cl)(=[O:9])=[O:8])[CH3:6].CCOCC>C(N(CC)CC)C>[CH2:5]([S:7]([O:4][CH2:3][CH2:2][Br:1])(=[O:9])=[O:8])[CH3:6]
+
+# uspto = pd.read_csv('data/1976_Sep2016_USPTOgrants_smiles.rsmi', sep='\t')
+# uspto = pd.read_csv('data/demo.rsmi', sep='\t')
+file_name = 'data/demo.rsmi'
+# file_name = 'data/1976_Sep2016_USPTOgrants_smiles.rsmi'
+uspto = pd.read_csv(file_name, sep='\t')
 
 uspto['ReactionSmiles'] = uspto['ReactionSmiles'].str.split(' ', expand=True)[0]
 split_smiles = uspto['ReactionSmiles'].str.split('>', expand=True)
@@ -30,7 +36,7 @@ uspto['reactants'] = split_smiles[0]
 uspto['spectators'] = split_smiles[1]
 uspto['products'] = split_smiles[2]
 
-parsable = Parallel(n_jobs=-1, verbose=1)(delayed(can_parse)(rsmi) for rsmi in uspto['ReactionSmiles'].values)
+parsable = Parallel(n_jobs=1, verbose=1)(delayed(can_parse)(rsmi) for rsmi in uspto['ReactionSmiles'].values)
 # parsable = uspto['ReactionSmiles'].map(can_parse)
 
 uspto = uspto[parsable]
@@ -43,7 +49,7 @@ uspto['source_id'] = hexhash
 
 uspto = uspto.reset_index().rename(columns={'index': '_id'})
 
-reactions = uspto[['_id', 'reactants', 'products', 'spectators', 'source', 'source_id']]
+reactions = uspto[['_id', 'reactants', 'products', 'spectators', 'source', 'source_id']] ##dataframe of reactions
 
 reactions.to_json('data/uspto.reactions.json.gz', orient='records', compression='gzip')
 
@@ -60,9 +66,15 @@ def extract(reaction):
         print(e)
         return {'reaction_id': reaction['_id']}
 
-templates = Parallel(n_jobs=-1, verbose=4)(delayed(extract)(reaction) for reaction in reactions)
+templates = Parallel(n_jobs=1, verbose=4)(delayed(extract)(reaction) for reaction in reactions)
 
-with gzip.open('data/uspto.templates.json.gz', 'w') as f:
-    json.dump(templates, f)
+if file_name== 'data/demo.rsmi':
+    with open('data/demo.templates.text', 'w') as f:
+        for i in templates:
+            result = i['reaction_smarts'] if 'reaction_smarts' in i else ''
+            print(result, file=f)
+else:
+    with gzip.open('data/uspto.templates.json.gz', 'w') as f:
+        json.dump(templates, f)
     
 print('elapsed seconds: {}'.format(int(time()-t0)))

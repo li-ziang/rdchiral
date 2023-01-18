@@ -518,7 +518,7 @@ def get_fragments_for_changed_atoms(mols, changed_atom_tags, radius=0,
         # Build list of atoms to use
         atoms_to_use = []
         for atom in mol.GetAtoms():
-            # Check self (only tagged atoms)
+            # Check self (only tagged atoms) and find changed atoms and tags
             if ':' in atom.GetSmarts():
                 if atom.GetSmarts().split(':')[1][:-1] in changed_atom_tags:
                     atoms_to_use.append(atom.GetIdx())
@@ -695,6 +695,9 @@ def bond_to_label(bond):
     return '{}{}{}'.format(atoms[0], bond.GetSmarts(), atoms[1])
 
 def extract_from_reaction(reaction):
+    # dataframe with ['_id', 'reactants', 'products', 'spectators', 'source', 'source_id']
+    print("reactants {}".format(reaction['reactants']))
+    print("products {}".format(reaction['products']))
     reactants = mols_from_smiles_list(replace_deuterated(reaction['reactants']).split('.'))
     products = mols_from_smiles_list(replace_deuterated(reaction['products']).split('.'))
     
@@ -760,7 +763,7 @@ def extract_from_reaction(reaction):
         return {'reaction_id': reaction['_id']}
 
     # Calculate changed atoms
-    changed_atoms, changed_atom_tags, err = get_changed_atoms(reactants, products)
+    changed_atoms, changed_atom_tags, err = get_changed_atoms(reactants, products) # Find the center of a chemical reaction.
     if err: 
         if VERBOSE:
             print('Could not get changed atoms')
@@ -781,7 +784,8 @@ def extract_from_reaction(reaction):
         # (WITHOUT matching groups but WITH the addition of reactant fragments)
         product_fragments, _, _  = get_fragments_for_changed_atoms(products, changed_atom_tags, 
             radius = 0, expansion = expand_changed_atom_tags(changed_atom_tags, reactant_fragments),
-            category = 'products')
+            category = 'products') # this part drops hcl in the first example TODO: add others to product_fragments
+
     except ValueError as e:
         if VERBOSE:
             print(e)
